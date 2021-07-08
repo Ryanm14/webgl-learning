@@ -3,16 +3,16 @@ function getWebGLContext(canvas: HTMLCanvasElement): WebGLRenderingContext {
     return canvas.getContext('webgl');
 }
 
-function initShaders(gl: WebGLRenderingContext, vshader_src: string, fshader_src: string) {
+function initShaders(gl: WebGLRenderingContext, vshader_src: string, fshader_src: string): WebGLProgram | null {
     var program = createProgram(gl, vshader_src, fshader_src);
     if (!program) {
         console.log('Failed to create program');
-        return false;
+        return program;
     }
 
     gl.useProgram(program);
 
-    return true;
+    return program;
 }
 
 function createProgram(gl, vshader, fshader) {
@@ -85,9 +85,12 @@ function loadShader(gl, type, source) {
 
 //Vertex Shader
 const VSHADER_SOURCE =`
+    attribute vec4 a_Position;
+    attribute float a_PointSize;
+
     void main() {
-       gl_Position = vec4(0.0, -0.2, 0.0, 1.0);
-       gl_PointSize = 10.0;
+       gl_Position = a_Position;
+       gl_PointSize = a_PointSize;
     }
     `;
 
@@ -110,10 +113,33 @@ function main() {
     }
 
     //Init Shaders
-    if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+    const program = initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)
+    if (!program) {
         console.log("Failed to init shaders");
         return false;
     }
+
+    //Get a_Position field in vertex shader
+    const a_Position = gl.getAttribLocation(program, 'a_Position')
+    if (a_Position < 0) {
+        console.log("Failed to get storage location of a_Position");
+        return false;
+    }
+
+    //Get a_PointSize field in vertex shader
+    const a_PointSize = gl.getAttribLocation(program, 'a_PointSize')
+    if (a_PointSize < 0) {
+        console.log("Failed to get storage location of a_PointSize");
+        return false;
+    }
+
+    //Pass data into a_Position field in vertex shader
+    gl.vertexAttrib3f(a_Position, Math.random() * 2 - 1, Math.random() * 2 - 1, 0.0);
+    //Both the same
+    gl.vertexAttrib3fv(a_Position, [Math.random() * 2 - 1, Math.random() * 2 - 1, 0.0]);
+
+    //Pass data into a_PointSize field in vertex shader
+    gl.vertexAttrib1f(a_PointSize, Math.random() * 100);
 
     gl.clearColor(0,0,0,1.0);
 
